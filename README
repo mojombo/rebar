@@ -1,0 +1,57 @@
+rebar
+  by Tom Preston-Werner
+
+With Moore's Law about to crumble from beneath our feet, we all need to start
+thinking about how to make use of those 64 core processors we'll be rockin' in
+our laptops in a few years. Ruby is an amazing language for many tasks, but
+sadly concurrent programming is not one of them. In preparation for the future
+I could consider dropping Ruby altogether and find another more appropriate
+language. But that would be madness. Ruby is awesome. What if I could still
+write the bulk of my projects in Ruby, but farm out the threaded stuff to the
+concurrency mercenary that is Erlang? That would be cool, right?
+
+Consider a small Erlang module:
+
+  -module(funs).
+  -export([add/2, cat/2, fac/1]).
+
+  add(A, B) ->
+    A + B.
+  
+  cat(A, B) ->
+    A ++ B.
+  
+  fac(N) ->
+    fac(1, N).
+  
+  fac(Memo, 0) ->
+    Memo;
+  fac(Memo, N) ->
+    fac(Memo * N, N - 1).
+
+I'd like to be able to call these Erlang functions from my Ruby code without a
+lot of fuss. Hmm, how's this for a low-fuss approach:
+
+  require 'rebar'
+
+  funs = Rebar::Erlang.new(:funs, '127.0.0.1', 5500)
+
+  funs.add(1, 2)
+  # => 3
+
+  funs.cat("foo", "bar")
+  # => "foobar"
+
+  funs.fac(10)
+  # => 3628800
+
+Wow, that would be nice. Good thing I just spent the last two days writing
+some code to make it a reality!
+
+The library is called Rebar (Ruby to Erlang Bridge And Runner). Rebar has two
+parts: an Erlang server and a Ruby client. The server listens for JSON-RPC
+requests, calls the specified Erlang function, and responds with a JSON-RPC
+response. The Ruby client object simply accepts any method name, captures it
+with method_missing, wraps everything up in a JSON-RPC request, fires it off,
+waits for the response, and then extracts the result out of the JSON-RPC
+response, returning it like a normal Ruby call.
